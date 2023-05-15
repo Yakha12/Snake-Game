@@ -3,7 +3,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.Random;
 
-
+//Setting up the game world
 public class GamePanel extends JPanel implements ActionListener {
 
     static final int SCREEN_WIDTH = 600;
@@ -29,10 +29,19 @@ public class GamePanel extends JPanel implements ActionListener {
     Random random;
 
     GamePanel(){
-
+        random = new Random();
+        this.setPreferredSize(new Dimension(SCREEN_WIDTH,SCREEN_HEIGHT));
+        this.setBackground(Color.BLACK);
+        this.setFocusable(true);
+        this.addKeyListener(new MyKeyAdapter());
+        startGame();
     }
     public void startGame(){
-
+        newApple();
+        running = true;
+        //this because we are using the actionlistener interface
+        timer = new Timer(DELAY,this);
+        timer.start();
     }
 
     public void paintComponent(Graphics g){
@@ -41,6 +50,7 @@ public class GamePanel extends JPanel implements ActionListener {
     public void draw(Graphics g){
 
     }
+    public void newApple(){}
     public  void move() {
 
     }
