@@ -6,7 +6,7 @@ import java.util.Random;
 //Setting up the game world
 public class GamePanel extends JPanel implements ActionListener {
    //Determine when the game is still on the menu or starts playing
-    private enum STATE {
+    static enum STATE {
         MENU,
         GAME
     };
@@ -17,7 +17,7 @@ public class GamePanel extends JPanel implements ActionListener {
     static final int UNIT_SIZE = 25;
     static final int GAME_UNIT = (SCREEN_WIDTH*SCREEN_HEIGHT)/UNIT_SIZE;
    //The Higher the number for delay the slower the game
-    static final int DELAY = 75;
+    static final int DELAY = 200;
 
     //Fields for Game Objects manipulation
     //Array to Hold body co-ordinates for the Snake We use GAME UNIT because the snake will never be larger than the game
@@ -33,8 +33,10 @@ public class GamePanel extends JPanel implements ActionListener {
     Random random;
 
     //Menu Fields
-    private  STATE state = STATE.MENU;
+    static STATE state = STATE.MENU;
     private Menu menu;
+    //Shared Object
+    private final Object lock = new Object();
 
     GamePanel(){
         random = new Random();
@@ -44,24 +46,36 @@ public class GamePanel extends JPanel implements ActionListener {
         this.addKeyListener(new MyKeyAdapter());
         //Create Menu Object
         menu = new Menu();
+        this.addMouseListener(menu.listener());
+
         startGame();
     }
     public void startGame(){
         //Only run if game is not in the menu
-        if(state == STATE.GAME) {
+
             newApple();
             running = true;
             //this because we are using the actionlistener interface
             timer = new Timer(DELAY, this);
             timer.start();
-        }
+
     }
 
     public void paintComponent(Graphics g){
         super.paintComponent(g);
-        draw(g);
+        /* synchronized keyword with the lock object to prevent race conditions between
+        *t he ActionListener thread and the EDT. event dispatch thread (EDT)
+         * */
+
+        synchronized (g) {
+            try {
+                draw(g);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
-    public void draw(Graphics g){
+    public void draw(Graphics g) throws InterruptedException {
         if(state == STATE.GAME) {
             if (running) {
                 //visualise the game grid FOR DEV
@@ -98,6 +112,9 @@ public class GamePanel extends JPanel implements ActionListener {
         }
         else if (state == STATE.MENU ){
             menu.draw(g);
+            if(state == STATE.GAME){
+                draw(g);
+            }
         }
     }
     public void newApple(){
@@ -165,7 +182,7 @@ public class GamePanel extends JPanel implements ActionListener {
             timer.stop();
         }
     }
-    public void gameOver(Graphics g){
+    public void gameOver(Graphics g) throws InterruptedException {
         //Game Over text
         g.setColor(Color.red);
         g.setFont(new Font("Ink Free",Font.BOLD,75));
@@ -180,6 +197,23 @@ public class GamePanel extends JPanel implements ActionListener {
         //For lining up text on the center
         FontMetrics metrics2 = getFontMetrics(g.getFont());
         g.drawString("Score: "+appleEaten,(SCREEN_WIDTH - metrics2.stringWidth("Score: "+appleEaten))/2,g.getFont().getSize());
+        state = STATE.MENU;
+        //Trying to avoid the IllegalMonitorStateException
+
+        /*
+        *synchronized block ensures that the notifyAll method
+        *  is called only after the EDT
+        * has finished executing the gameOver method.
+        *  This will wake up any threads that are waiting on the lock object,
+        *  allowing them to proceed
+         */
+        synchronized (g) {
+
+            g.notifyAll();
+            g.wait(3000);
+        }
+        paintComponent(g);
+
 
     }
 
