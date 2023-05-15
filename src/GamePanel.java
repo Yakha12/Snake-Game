@@ -106,7 +106,33 @@ public class GamePanel extends JPanel implements ActionListener {
 
     }
     public void checkCollisions(){
-
+        //Check if head collides with body
+        for (int i = bodyParts;i<0;i--){
+            //if this is true it mean the head hit the body
+            if ((x[0]==x[i])&&(y[0]==y[i])){
+                running=false;
+            }
+        }
+        //Check if head touches left boarder
+        if(x[0] < 0){
+             running = false;
+        }
+        //Check if head touches right boarder
+        if(x[0] > SCREEN_WIDTH){
+            running = false;
+        }
+        //Check if head touches top boarder
+        if(y[0] < 0){
+            running = false;
+        }
+        //Check if head touches bottom boarder
+        if(y[0] > SCREEN_HEIGHT){
+            running = false;
+        }
+        //if game is not running then stop the timer
+        if (!running){
+            timer.stop();
+        }
     }
     public void gameOver(Graphics g){
 
@@ -124,7 +150,39 @@ public class GamePanel extends JPanel implements ActionListener {
         repaint();
     }
     public class MyKeyAdapter extends KeyAdapter{
+        //Control the Snake
         @Override
-        public void keyPressed(KeyEvent e){}
+        public void keyPressed(KeyEvent e){
+            switch (e.getKeyCode()){
+                case KeyEvent.VK_LEFT:
+                    //Limit user to 90 degree turns
+                    if (direction != 'R'){
+                        direction = 'L';
+                    }
+                    break;
+
+                case KeyEvent.VK_RIGHT:
+                    //Limit user to 90 degree turns
+                    if (direction != 'L'){
+                        direction = 'R';
+                    }
+                    break;
+
+                case KeyEvent.VK_UP:
+                    //Limit user to 90 degree turns
+                    if (direction != 'D'){
+                        direction = 'U';
+                    }
+                    break;
+
+                case KeyEvent.VK_DOWN:
+                    //Limit user to 90 degree turns
+                    if (direction != 'U'){
+                        direction = 'D';
+                    }
+                    break;
+
+            }
+        }
     }
 }
