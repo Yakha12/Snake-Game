@@ -5,7 +5,11 @@ import java.util.Random;
 
 //Setting up the game world
 public class GamePanel extends JPanel implements ActionListener {
-
+   //Determine when the game is still on the menu or starts playing
+    private enum STATE {
+        MENU,
+        GAME
+    };
     static final int SCREEN_WIDTH = 600;
     static final int SCREEN_HEIGHT = 600;
 
@@ -28,20 +32,29 @@ public class GamePanel extends JPanel implements ActionListener {
     Timer timer;
     Random random;
 
+    //Menu Fields
+    private  STATE state = STATE.MENU;
+    private Menu menu;
+
     GamePanel(){
         random = new Random();
         this.setPreferredSize(new Dimension(SCREEN_WIDTH,SCREEN_HEIGHT));
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
         this.addKeyListener(new MyKeyAdapter());
+        //Create Menu Object
+        menu = new Menu();
         startGame();
     }
     public void startGame(){
-        newApple();
-        running = true;
-        //this because we are using the actionlistener interface
-        timer = new Timer(DELAY,this);
-        timer.start();
+        //Only run if game is not in the menu
+        if(state == STATE.GAME) {
+            newApple();
+            running = true;
+            //this because we are using the actionlistener interface
+            timer = new Timer(DELAY, this);
+            timer.start();
+        }
     }
 
     public void paintComponent(Graphics g){
@@ -49,39 +62,42 @@ public class GamePanel extends JPanel implements ActionListener {
         draw(g);
     }
     public void draw(Graphics g){
-        if (running) {
-            //visualise the game grid FOR DEV
-            for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
-                g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
-                g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
-            }
-            //DRAW APPLE
-            g.setColor(Color.GREEN);
-            //draw circle
-            g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
-
-            //DRAW SNAKE
-            for (int i = 0; i < bodyParts; i++) {
-                //i = 0 is where the head is located
-                if (i == 0) {
-                    g.setColor(Color.MAGENTA);
-                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
+        if(state == STATE.GAME) {
+            if (running) {
+                //visualise the game grid FOR DEV
+                for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
+                    g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
+                    g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
                 }
-                else {
-                    g.setColor(Color.magenta);
-                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                }
-            }
-            //Score Board
-            g.setColor(Color.red);
-            g.setFont(new Font("Ink Free",Font.BOLD,40));
-            //For lining up text on the center
-            FontMetrics metrics = getFontMetrics(g.getFont());
-            g.drawString("Score: "+appleEaten,(SCREEN_WIDTH - metrics.stringWidth("Score: "+appleEaten))/2,g.getFont().getSize());
+                //DRAW APPLE
+                g.setColor(Color.GREEN);
+                //draw circle
+                g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
 
+                //DRAW SNAKE
+                for (int i = 0; i < bodyParts; i++) {
+                    //i = 0 is where the head is located
+                    if (i == 0) {
+                        g.setColor(Color.MAGENTA);
+                        g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
+                    } else {
+                        g.setColor(Color.magenta);
+                        g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
+                    }
+                }
+                //Score Board
+                g.setColor(Color.red);
+                g.setFont(new Font("Ink Free", Font.BOLD, 40));
+                //For lining up text on the center
+                FontMetrics metrics = getFontMetrics(g.getFont());
+                g.drawString("Score: " + appleEaten, (SCREEN_WIDTH - metrics.stringWidth("Score: " + appleEaten)) / 2, g.getFont().getSize());
+
+            } else {
+                gameOver(g);
+            }
         }
-        else {
-            gameOver(g);
+        else if (state == STATE.MENU ){
+            menu.draw(g);
         }
     }
     public void newApple(){
@@ -182,35 +198,37 @@ public class GamePanel extends JPanel implements ActionListener {
         //Control the Snake
         @Override
         public void keyPressed(KeyEvent e){
-            switch (e.getKeyCode()){
-                case KeyEvent.VK_LEFT:
-                    //Limit user to 90 degree turns
-                    if (direction != 'R'){
-                        direction = 'L';
-                    }
-                    break;
+            if (state == STATE.GAME){
+                switch (e.getKeyCode()){
+                    case KeyEvent.VK_LEFT:
+                        //Limit user to 90 degree turns
+                        if (direction != 'R'){
+                            direction = 'L';
+                        }
+                        break;
 
-                case KeyEvent.VK_RIGHT:
-                    //Limit user to 90 degree turns
-                    if (direction != 'L'){
-                        direction = 'R';
-                    }
-                    break;
+                    case KeyEvent.VK_RIGHT:
+                        //Limit user to 90 degree turns
+                        if (direction != 'L'){
+                            direction = 'R';
+                        }
+                        break;
 
-                case KeyEvent.VK_UP:
-                    //Limit user to 90 degree turns
-                    if (direction != 'D'){
-                        direction = 'U';
-                    }
-                    break;
+                    case KeyEvent.VK_UP:
+                        //Limit user to 90 degree turns
+                        if (direction != 'D'){
+                            direction = 'U';
+                        }
+                        break;
 
-                case KeyEvent.VK_DOWN:
-                    //Limit user to 90 degree turns
-                    if (direction != 'U'){
-                        direction = 'D';
-                    }
-                    break;
+                    case KeyEvent.VK_DOWN:
+                        //Limit user to 90 degree turns
+                        if (direction != 'U'){
+                            direction = 'D';
+                        }
+                        break;
 
+                }
             }
         }
     }
