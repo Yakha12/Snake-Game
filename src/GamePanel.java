@@ -49,28 +49,39 @@ public class GamePanel extends JPanel implements ActionListener {
         draw(g);
     }
     public void draw(Graphics g){
+        if (running) {
+            //visualise the game grid FOR DEV
+            for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
+                g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
+                g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
+            }
+            //DRAW APPLE
+            g.setColor(Color.GREEN);
+            //draw circle
+            g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
 
-        //visualise the game grid FOR DEV
-        for (int i=0;i<SCREEN_HEIGHT/UNIT_SIZE;i++){
-            g.drawLine(i*UNIT_SIZE,0,i*UNIT_SIZE,SCREEN_HEIGHT);
-            g.drawLine(0,i * UNIT_SIZE,SCREEN_WIDTH,i*UNIT_SIZE);
+            //DRAW SNAKE
+            for (int i = 0; i < bodyParts; i++) {
+                //i = 0 is where the head is located
+                if (i == 0) {
+                    g.setColor(Color.MAGENTA);
+                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
+                }
+                else {
+                    g.setColor(Color.magenta);
+                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
+                }
+            }
+            //Score Board
+            g.setColor(Color.red);
+            g.setFont(new Font("Ink Free",Font.BOLD,40));
+            //For lining up text on the center
+            FontMetrics metrics = getFontMetrics(g.getFont());
+            g.drawString("Score: "+appleEaten,(SCREEN_WIDTH - metrics.stringWidth("Score: "+appleEaten))/2,g.getFont().getSize());
+
         }
-        //DRAW APPLE
-        g.setColor(Color.GREEN);
-        //draw circle
-        g.fillOval(appleX,appleY,UNIT_SIZE,UNIT_SIZE);
-
-        //DRAW SNAKE
-        for (int i = 0; i<bodyParts;i++){
-            //i = 0 is where the head is located
-            if(i==0){
-                g.setColor(Color.MAGENTA);
-                g.fillRect(x[i],y[i],UNIT_SIZE,UNIT_SIZE);
-            }
-            else {
-                g.setColor(Color.magenta);
-                g.fillRect(x[i],y[i],UNIT_SIZE,UNIT_SIZE);
-            }
+        else {
+            gameOver(g);
         }
     }
     public void newApple(){
@@ -103,7 +114,11 @@ public class GamePanel extends JPanel implements ActionListener {
 
     }
     public void  checkApple(){
-
+        if ((x[0]==appleX) && (y[0]==appleY)){
+            bodyParts++;
+            appleEaten++;
+            newApple();
+        }
     }
     public void checkCollisions(){
         //Check if head collides with body
@@ -135,6 +150,20 @@ public class GamePanel extends JPanel implements ActionListener {
         }
     }
     public void gameOver(Graphics g){
+        //Game Over text
+        g.setColor(Color.red);
+        g.setFont(new Font("Ink Free",Font.BOLD,75));
+        //For lining up text on the center
+        FontMetrics metrics1 = getFontMetrics(g.getFont());
+        String gameOverStr = "Game Over";
+        g.drawString(gameOverStr,(SCREEN_WIDTH - metrics1.stringWidth(gameOverStr))/2,SCREEN_HEIGHT/02);
+
+        //Score Board
+        g.setColor(Color.red);
+        g.setFont(new Font("Ink Free",Font.BOLD,40));
+        //For lining up text on the center
+        FontMetrics metrics2 = getFontMetrics(g.getFont());
+        g.drawString("Score: "+appleEaten,(SCREEN_WIDTH - metrics2.stringWidth("Score: "+appleEaten))/2,g.getFont().getSize());
 
     }
 
