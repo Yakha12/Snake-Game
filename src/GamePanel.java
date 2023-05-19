@@ -5,7 +5,11 @@ import java.util.Random;
 
 //Setting up the game world
 public class GamePanel extends JPanel implements ActionListener {
-
+   //Determine when the game is still on the menu or starts playing
+    static enum STATE {
+        MENU,
+        GAME
+    };
     static final int SCREEN_WIDTH = 600;
     static final int SCREEN_HEIGHT = 600;
 
@@ -13,7 +17,7 @@ public class GamePanel extends JPanel implements ActionListener {
     static final int UNIT_SIZE = 25;
     static final int GAME_UNIT = (SCREEN_WIDTH*SCREEN_HEIGHT)/UNIT_SIZE;
    //The Higher the number for delay the slower the game
-    static final int DELAY = 75;
+    static final int DELAY = 200;
 
     //Fields for Game Objects manipulation
     //Array to Hold body co-ordinates for the Snake We use GAME UNIT because the snake will never be larger than the game
@@ -28,60 +32,89 @@ public class GamePanel extends JPanel implements ActionListener {
     Timer timer;
     Random random;
 
+    //Menu Fields
+    static STATE state = STATE.MENU;
+    private Menu menu;
+    //Shared Object
+    private final Object lock = new Object();
+
     GamePanel(){
         random = new Random();
         this.setPreferredSize(new Dimension(SCREEN_WIDTH,SCREEN_HEIGHT));
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
         this.addKeyListener(new MyKeyAdapter());
+        //Create Menu Object
+        menu = new Menu();
+        this.addMouseListener(menu.listener());
+
         startGame();
     }
     public void startGame(){
-        newApple();
-        running = true;
-        //this because we are using the actionlistener interface
-        timer = new Timer(DELAY,this);
-        timer.start();
+        //Only run if game is not in the menu
+
+            newApple();
+            running = true;
+            //this because we are using the actionlistener interface
+            timer = new Timer(DELAY, this);
+            timer.start();
+
     }
 
     public void paintComponent(Graphics g){
         super.paintComponent(g);
-        draw(g);
-    }
-    public void draw(Graphics g){
-        if (running) {
-            //visualise the game grid FOR DEV
-            for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
-                g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
-                g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
-            }
-            //DRAW APPLE
-            g.setColor(Color.GREEN);
-            //draw circle
-            g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
+        /* synchronized keyword with the lock object to prevent race conditions between
+        *t he ActionListener thread and the EDT. event dispatch thread (EDT)
+         * */
 
-            //DRAW SNAKE
-            for (int i = 0; i < bodyParts; i++) {
-                //i = 0 is where the head is located
-                if (i == 0) {
-                    g.setColor(Color.MAGENTA);
-                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                }
-                else {
-                    g.setColor(Color.magenta);
-                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                }
+        synchronized (g) {
+            try {
+                draw(g);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
-            //Score Board
-            g.setColor(Color.red);
-            g.setFont(new Font("Ink Free",Font.BOLD,40));
-            //For lining up text on the center
-            FontMetrics metrics = getFontMetrics(g.getFont());
-            g.drawString("Score: "+appleEaten,(SCREEN_WIDTH - metrics.stringWidth("Score: "+appleEaten))/2,g.getFont().getSize());
-
         }
-        else {
-            gameOver(g);
+    }
+    public void draw(Graphics g) throws InterruptedException {
+        if(state == STATE.GAME) {
+            if (running) {
+                //visualise the game grid FOR DEV
+                for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
+                    g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
+                    g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
+                }
+                //DRAW APPLE
+                g.setColor(Color.GREEN);
+                //draw circle
+                g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
+
+                //DRAW SNAKE
+                for (int i = 0; i < bodyParts; i++) {
+                    //i = 0 is where the head is located
+                    if (i == 0) {
+                        g.setColor(Color.MAGENTA);
+                        g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
+                    } else {
+                        g.setColor(Color.magenta);
+                        g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
+                    }
+                }
+                //Score Board
+                g.setColor(Color.red);
+                g.setFont(new Font("Ink Free", Font.BOLD, 40));
+                //For lining up text on the center
+                FontMetrics metrics = getFontMetrics(g.getFont());
+                g.drawString("Score: " + appleEaten, (SCREEN_WIDTH - metrics.stringWidth("Score: " + appleEaten)) / 2, g.getFont().getSize());
+
+            } else {
+                gameOver(g);
+            }
+        }
+        else if (state == STATE.MENU ){
+            menu.draw(g);
+            if(state == STATE.GAME){
+                draw(g);
+            }
         }
     }
     public void newApple(){
@@ -149,7 +182,7 @@ public class GamePanel extends JPanel implements ActionListener {
             timer.stop();
         }
     }
-    public void gameOver(Graphics g){
+    public void gameOver(Graphics g) throws InterruptedException {
         //Game Over text
         g.setColor(Color.red);
         g.setFont(new Font("Ink Free",Font.BOLD,75));
@@ -164,6 +197,23 @@ public class GamePanel extends JPanel implements ActionListener {
         //For lining up text on the center
         FontMetrics metrics2 = getFontMetrics(g.getFont());
         g.drawString("Score: "+appleEaten,(SCREEN_WIDTH - metrics2.stringWidth("Score: "+appleEaten))/2,g.getFont().getSize());
+        state = STATE.MENU;
+        //Trying to avoid the IllegalMonitorStateException
+
+        /*
+        *synchronized block ensures that the notifyAll method
+        *  is called only after the EDT
+        * has finished executing the gameOver method.
+        *  This will wake up any threads that are waiting on the lock object,
+        *  allowing them to proceed
+         */
+        synchronized (g) {
+
+            g.notifyAll();
+            g.wait(3000);
+        }
+        paintComponent(g);
+
 
     }
 
@@ -182,35 +232,37 @@ public class GamePanel extends JPanel implements ActionListener {
         //Control the Snake
         @Override
         public void keyPressed(KeyEvent e){
-            switch (e.getKeyCode()){
-                case KeyEvent.VK_LEFT:
-                    //Limit user to 90 degree turns
-                    if (direction != 'R'){
-                        direction = 'L';
-                    }
-                    break;
+            if (state == STATE.GAME){
+                switch (e.getKeyCode()){
+                    case KeyEvent.VK_LEFT:
+                        //Limit user to 90 degree turns
+                        if (direction != 'R'){
+                            direction = 'L';
+                        }
+                        break;
 
-                case KeyEvent.VK_RIGHT:
-                    //Limit user to 90 degree turns
-                    if (direction != 'L'){
-                        direction = 'R';
-                    }
-                    break;
+                    case KeyEvent.VK_RIGHT:
+                        //Limit user to 90 degree turns
+                        if (direction != 'L'){
+                            direction = 'R';
+                        }
+                        break;
 
-                case KeyEvent.VK_UP:
-                    //Limit user to 90 degree turns
-                    if (direction != 'D'){
-                        direction = 'U';
-                    }
-                    break;
+                    case KeyEvent.VK_UP:
+                        //Limit user to 90 degree turns
+                        if (direction != 'D'){
+                            direction = 'U';
+                        }
+                        break;
 
-                case KeyEvent.VK_DOWN:
-                    //Limit user to 90 degree turns
-                    if (direction != 'U'){
-                        direction = 'D';
-                    }
-                    break;
+                    case KeyEvent.VK_DOWN:
+                        //Limit user to 90 degree turns
+                        if (direction != 'U'){
+                            direction = 'D';
+                        }
+                        break;
 
+                }
             }
         }
     }
